@@ -130,6 +130,25 @@ func (m ChatCompletionMessage) MarshalJSON() ([]byte, error) {
 		return json.Marshal(msg)
 	}
 
+	if len(m.ToolCalls) > 0 || m.FunctionCall != nil {
+		// content field is only required unless tool_calls or function_call is
+		// specified; allowing it to be omitted in this case avoids a HTTP 500
+		// response when using structured outputs with a tool call:
+		//
+		// https://community.openai.com/t/calling-chat-completion-parse-with-structured-output-and-previous-tool-calls-in-the-message-history-throws-a-500/896227
+		msg := struct {
+			Role         string            `json:"role"`
+			Content      string            `json:"content,omitempty"`
+			Refusal      string            `json:"refusal,omitempty"`
+			MultiContent []ChatMessagePart `json:"-"`
+			Name         string            `json:"name,omitempty"`
+			FunctionCall *FunctionCall     `json:"function_call,omitempty"`
+			ToolCalls    []ToolCall        `json:"tool_calls,omitempty"`
+			ToolCallID   string            `json:"tool_call_id,omitempty"`
+		}(m)
+		return json.Marshal(msg)
+	}
+
 	msg := struct {
 		Role         string            `json:"role"`
 		Content      string            `json:"content"`
